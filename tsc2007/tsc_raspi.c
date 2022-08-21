@@ -18,7 +18,7 @@
  */
 
 #include <linux/module.h>
-#include <linux/i2c/tsc2007.h>
+#include "tsc2007.h"
 #include <linux/i2c.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
@@ -26,7 +26,7 @@
 
 static struct i2c_client *tsc2007_client;
 
-static int tsc2007_penirq_pin = 17;
+static int tsc2007_penirq_pin = 4;
 module_param_named(penirq_pin, tsc2007_penirq_pin, int, 0);
 MODULE_PARM_DESC(penirq_pin,
     "PENIRQ GPIO pin (17=default)");
@@ -44,7 +44,7 @@ static void tsc2007_clear_penirq(void)
 static int tsc2007_init_platform_hw(void)
 {
 	return gpio_request_one(tsc2007_penirq_pin,
-				GPIOF_IN | GPIOF_OUT_INIT_HIGH, "PENIRQ");
+				GPIOF_IN, "PENIRQ");
 }
 
 static void tsc2007_exit_platform_hw(void)
@@ -90,13 +90,16 @@ static int __init tsc_raspi_init(void)
 	if (err < 0)
 		goto error;
 
-	adapter = i2c_get_adapter(0);
+	adapter = i2c_get_adapter(1);
 	if (adapter == NULL) {
-		err = -ENXIO;
-		goto error;
+	    adapter = i2c_get_adapter(0);
+	    if (adapter == NULL) {
+	        err = -ENXIO;
+		    goto error;
+	    }
 	}
 
-	tsc2007_client = i2c_new_device(adapter, &raspi_board_info);
+	tsc2007_client = i2c_new_client_device(adapter, &raspi_board_info);
 	err = tsc2007_client ? 0 : -ENXIO;
 
 error:
